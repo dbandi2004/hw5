@@ -1,45 +1,57 @@
-#ifndef RECCHECK
-#include <set>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <map>
-#include <algorithm>
-// add or remove necessary headers as you please
-
-#endif
-
 #include "schedwork.h"
+#include <iostream>
+#include <vector>
+#include <functional>
 
 using namespace std;
 
-// a constant that can be used to indicate an INVALID 
-// worker ID if that is useful to your implementation.
-// Feel free to not use or delete.
 static const Worker_T INVALID_ID = (unsigned int)-1;
 
-
-// Add prototypes for any helper functions here
-
-
-// Add your implementation of schedule() and other helper functions here
+bool assignWorkers(size_t day, const AvailabilityMatrix& avail, size_t dailyNeed, size_t maxShifts, DailySchedule& sched, vector<size_t>& shifts);
 
 bool schedule(
     const AvailabilityMatrix& avail,
     const size_t dailyNeed,
     const size_t maxShifts,
     DailySchedule& sched
-)
-{
-    if(avail.size() == 0U){
+) {
+    if(avail.empty() || dailyNeed == 0 || maxShifts == 0) {
         return false;
     }
     sched.clear();
-    // Add your code below
+    sched.resize(avail.size(), vector<Worker_T>(dailyNeed, INVALID_ID));
+    vector<size_t> shifts(avail[0].size(), 0);
 
-
-
-
+    return assignWorkers(0, avail, dailyNeed, maxShifts, sched, shifts);
 }
 
+bool assignWorkers(size_t day, const AvailabilityMatrix& avail, size_t dailyNeed, size_t maxShifts, DailySchedule& sched, vector<size_t>& shifts) {
+    if (day == avail.size()) {
+        return true;
+    }
+
+    function<bool(size_t, size_t)> tryAssign = [&](size_t workerIndex, size_t assignedCount) -> bool {
+        if (assignedCount == dailyNeed) {
+            return assignWorkers(day + 1, avail, dailyNeed, maxShifts, sched, shifts);
+        }
+        if (workerIndex == avail[day].size()) {
+            return false;
+        }
+
+        if (avail[day][workerIndex] && shifts[workerIndex] < maxShifts) {
+            sched[day][assignedCount] = workerIndex;
+            shifts[workerIndex]++;
+
+            if (tryAssign(workerIndex + 1, assignedCount + 1)) {
+                return true;
+            }
+
+            sched[day][assignedCount] = INVALID_ID;
+            shifts[workerIndex]--;
+        }
+
+        return tryAssign(workerIndex + 1, assignedCount);
+    };
+
+    return tryAssign(0, 0);
+}
